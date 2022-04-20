@@ -5,3 +5,6 @@ IP address set to 192.168.0.150
 
 click "Show Directory" to see directory status in SD card through Serial monitor!
  
+click "Download" to download file from SD card!
+
+click "Upload" to upload file in the root directory of SD card!
