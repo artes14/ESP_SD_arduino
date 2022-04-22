@@ -47,13 +47,12 @@
   ESP32WebServer server(80);
 #endif
 
-// #define WIFI_MODE "AP"
-
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void setup(void){
   Serial.begin(115200);
   Serial.println("start!!!");
   delay(2000);
+  // WIFI_MODE : "STA" or "AP"
   if(WIFI_MODE=="STA"){
     if (!WiFi.config(local_IP, gateway, subnet, dns)) { //WiFi.config(ip, gateway, subnet, dns1, dns2);
       Serial.println("WiFi STATION Failed to configure Correctly"); 
@@ -105,6 +104,7 @@ void setup(void){
   ///////////////////////////// Server Commands 
   server.on("/",         HomePage);
   server.on("/download", File_Download);
+  server.on("/downloadf", File_Download_Folder);
   server.on("/upload",   File_Upload);
   server.on("/utest",   File_Upload_test);
   server.on("/umotor",   File_Upload_station);
@@ -130,7 +130,8 @@ char c='a';
 void HomePage(){
   SendHTML_Header();
   webpage += F("<a href='/download'><button>Download</button></a>");
-  webpage += F("<a href='/upload'><button>Upload</button></a>");
+  webpage += F("<a href='/downloadf'><button>Download Folder</button></a>");
+  webpage += F("<a href='/upload'><br><button>Upload</button></a>");
   webpage += F("<a href='/utest'><button>UploadTest</button></a>");
   webpage += F("<a href='/umotor'><button>UploadMotor</button></a>");
   webpage += F("<a href='/uportable'><button>UploadPortable</button></a>");
@@ -143,7 +144,7 @@ void HomePage(){
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void File_Directory(){
-  Serial.println("\n DIRECTORY STATUS");
+  Serial.println("\n========/DIRECTORY STATUS/========");
   root = SD.open("/");
   Serial.println(printDirectory(root, 0));
   HomePage();
@@ -155,9 +156,37 @@ void File_Download(){ // This gets called twice, the first pass selects the inpu
   }
   else SelectInput("Enter filename to download","download","download");
 }
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void File_Download_test(){ // This gets called twice, the first pass selects the input, the second pass then processes the command line arguments
+void File_Download_Folder(){
+  if (server.args()>0){
+    if(server.hasArg("downloadf")){
+      String foldername = server.arg(0); // foldername sent to server
+      if(SD_present) {
+        File folder = SD.open("/"+foldername); // open dir
+        if(folder){ //if directory exists
+          String filename = "";
+          while(true){
+            File entry =  folder.openNextFile();  // open next file in dir
+            if(!entry) break;  // no next file in dir
+            else Serial.println("sending filename : " + foldername + "/" + entry.name());
+            if(entry.isDirectory()){
+              continue;
+            }
+            else {
+              SD_file_download("/" + foldername + "/" + entry.name());
+            }
+            entry.close();
+            delay(100);
+          }
+        }
+        folder.close();
+      }
+    }
+  }
+  else SelectInput("Enter file directory to download", "downloadf", "downloadf");
+}
 
+void File_Download_test(){ // This gets called twice, the first pass selects the input, the second pass then processes the command line arguments
+  
   SD_file_download("images/momo3.jpg");
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -165,9 +194,11 @@ void SD_file_download(String filename){
   if (SD_present) { 
     File download = SD.open("/"+filename);
     if (download) {
+      Serial.println(download.name());
       server.sendHeader("Content-Type", "text/text");
       server.sendHeader("Content-Disposition", "attachment; filename="+filename);
       server.sendHeader("Connection", "close");
+      server.streamFile(download, "application/octet-stream");
       server.streamFile(download, "application/octet-stream");
       download.close();
     } else ReportFileNotPresent("download"); 
@@ -231,7 +262,7 @@ void File_Upload_mobile(){
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void handleFileUpload(){ // upload a new file to the Filing system
-  // unsigned long time=millis();
+  unsigned long time=millis();
   String dir="";
     if(c=='r') dir="/";
     else if(c=='t') dir="/test/";
@@ -258,9 +289,11 @@ void handleFileUpload(){ // upload a new file to the Filing system
     if(UploadFile)          // If the file was successfully created
     {                                    
       UploadFile.close();   // Close the file again
+      unsigned long elapsed = millis()-time;
 //      Serial.print("elapsed: ");Serial.println(millis()-time);
       //SD_file_download(uploadfile.filename);
       Serial.print("Upload Size: "); Serial.println(file_size(uploadfile.totalSize));
+      Serial.print("Upload Speed: "); Serial.println(file_speed(uploadfile.totalSize, elapsed));
       webpage = "";
       append_page_header();
       webpage += F("<h3>File was successfully uploaded</h3>"); 
@@ -269,7 +302,7 @@ void handleFileUpload(){ // upload a new file to the Filing system
       append_page_footer();
       server.send(200,"text/html",webpage);
       root = SD.open(dir);
-      Serial.println("\n DIRECTORY STATUS " + dir);
+      Serial.println("\n========/DIRECTORY STATUS/======== " + dir);
       Serial.println(printDirectory(root, 0));
     } 
     else
@@ -348,6 +381,11 @@ String file_size(int bytes){
   else                              fsize = String(bytes/1024.0/1024.0/1024.0,3)+" GB";
   return fsize;
 }
+String file_speed(int bytes, unsigned long time){
+  String fspeed = "";
+  fspeed = String((double)bytes/1024.0/1024.0/(double)time*1000.0,3)+" MB/s";
+  return fspeed;
+}
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 String printDirectory(File dir, int numTabs) {
   String S="";
@@ -363,6 +401,7 @@ String printDirectory(File dir, int numTabs) {
       // files have sizes, directories do not
       S += "\t\t"; //Serial.print("\t\t");
       S += file_size(entry.size()); //Serial.println(file_size(entry.size()));
+      S += "\n";
     }
     entry.close();
   }

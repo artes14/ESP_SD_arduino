@@ -39,3 +39,15 @@ void append_page_footer(){ // Saves repeating many lines of code for HTML page f
   webpage += F("</ul>");
   webpage += F("</body></html>");
 }
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void append_page_script_filenames(){
+  webpage += F("<script>");
+  webpage += F("var gateway = `ws://${window.location.hostname}/ws`;");
+  webpage += F("<ul>");
+  webpage += F("<ul>");
+  webpage += F("<ul>");
+  webpage += F("<ul>");
+  webpage += F("<ul>");
+  webpage += F("<ul>");
+  webpage += F("<ul>");
+}
