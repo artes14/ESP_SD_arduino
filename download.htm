@@ -1,0 +1,25 @@
+<script>
+  function download_files(files) {
+  function download_next(i) {
+    if (i >= files.length) { return; }
+    var doc = document.createElement('a');
+    doc.href = files[i].download;
+    doc.target = '_parent';
+    if ('download' in doc) { doc.download = files[i].filename; }
+    (document.body || document.documentElement).appendChild(doc);
+    if (doc.click) { doc.click(); } 
+    else { $(doc).click(); }
+    doc.parentNode.removeChild(doc);
+    setTimeout(function() {
+      download_next(i + 1);
+    }, 500);
+  } download_next(0);
+}
+  function do_dl() {
+    download_files([
+      { download: "https://stackoverflow.com/robots.txt", filename: "robots.txt" },
+      { download: "https://www.w3.org/TR/PNG/iso_8859-1.txt", filename: "standards.txt" },
+      { download: "http://qiime.org/_static/Examples/File_Formats/Example_Mapping_File.txt", filename: "example.txt" },
+    ]);
+  };
+</script>
