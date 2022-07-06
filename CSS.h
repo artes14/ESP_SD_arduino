@@ -40,7 +40,7 @@ void append_page_footer(){ // Saves repeating many lines of code for HTML page f
   webpage += F("</body></html>");
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void append_page_script_filenames(){
+void append_page_script_filenames(){ //use websocket connection script
   webpage += F("<script>");
   webpage += F("var gateway = `ws://${window.location.hostname}/ws`;");
   webpage += F("<ul>");
@@ -50,4 +50,23 @@ void append_page_script_filenames(){
   webpage += F("<ul>");
   webpage += F("<ul>");
   webpage += F("<ul>");
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void append_progress_script(){
+  webpage += F("<script>");
+  webpage += F("function _(el){	return document.getElementById(el); }");
+  webpage += F("function uploadFile(){ var file = _('file1').files[0]; var formdata = new FormData(); formdata.append('file1', file);");
+  webpage += F("var ajax = new XMLHttpRequest();");
+  webpage += F("ajax.upload.addEventListener('progress', progressHandler, false);");
+  webpage += F("ajax.addEventListener('load', completeHandler, false);");
+//  webpage += F("ajax.addEventListener('error', errorHandler, false);");
+//  webpage += F("ajax.addEventListener('abort', abortHandler, false);");
+  webpage += F("ajax.send(formdata); }");
+  webpage += F("function progressHandler(event){	_('loaded_n_total').innerHTML = 'Uploaded '+event.loaded+' bytes of '+event.total;");
+  webpage += F("var percent = (event.loaded / event.total) * 100;	_('progressBar').value = Math.round(percent);");
+  webpage += F("_('status').innerHTML = Math.round(percent)+'% uploaded... please wait'; }");
+  webpage += F("function completeHandler(event){");
+  webpage += F("_('status').innerHTML = event.target.responseText;");
+  webpage += F("_('progressBar').value = 0; }");
+  webpage += F("</script>");
 }

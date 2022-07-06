@@ -1,4 +1,6 @@
-String WIFI_MODE = "STA"; // set to "AP" for APmode
+
+
+String WIFI_MODE = "STA";
 #define   servername "fileserver"  // Set your server's logical name here e.g. if 'myserver' then address is http://myserver.local/
 
 IPAddress local_IP(192, 168, 0, 150); // Set your server's fixed IP address here
