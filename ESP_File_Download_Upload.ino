@@ -34,10 +34,33 @@ ESP32WebServer server(80);
 #define FTP_BUF_SIZE 2*1460
 
 #define PIN_BTN 34
+//#define PIN_SEND 35
+#define PIN_LED_MODE1 35
+#define PIN_LED_MODE2 32
+
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void LED_WIFImode(String md){
+  if(md=="STA"){
+    digitalWrite(PIN_LED_MODE1, HIGH);
+    digitalWrite(PIN_LED_MODE2, LOW);
+  }
+  else if(md=="AP"){
+    digitalWrite(PIN_LED_MODE1, LOW);
+    digitalWrite(PIN_LED_MODE2, HIGH);
+  }
+}
+void LED_init(){
+    digitalWrite(PIN_LED_MODE1, LOW);
+    digitalWrite(PIN_LED_MODE2, LOW);
+}
+
 void setup(void) {
   pinMode(PIN_BTN, INPUT);
+//  pinMode(PIN_SEND, INPUT);
+  pinMode(PIN_LED_MODE1, OUTPUT);
+  pinMode(PIN_LED_MODE2, OUTPUT);
+  LED_init();
   Serial.begin(500000);
   Serial.println("start!!!");
   delay(2000);
@@ -91,6 +114,7 @@ void setup(void) {
     Serial.println("setting WiFi as AP ...");
     WiFi.mode(WIFI_AP_STA); //need both to serve the webpage and take commands via tcp
     WiFi.softAP(ssid_ap, password_ap);
+    delay(100);
     if (!WiFi.softAPConfig(local_IP, gateway, subnet)) { //WiFi.config(ip, gateway, subnet, dns1, dns2);
       Serial.println("WiFi STATION Failed to configure Correctly");
     }
@@ -118,6 +142,8 @@ void setup(void) {
   server.on("/fupload",  HTTP_POST, fupload_do , handleFileUpload);
   ///////////////////////////// End of Request commands
   server.begin();
+  LED_WIFImode(WIFI_MODE);
+  LED_init();
   Serial.println("HTTP server started");
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,9 +170,6 @@ void loop(void) {
       ESP.restart();
     }
     else Serial.println("no modefile");
-
-
-
   }
 
 }
