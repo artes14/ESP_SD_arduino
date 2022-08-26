@@ -26,48 +26,48 @@ WiFiMulti wifiMulti;
 ESP32WebServer server(80);
 #endif
 
-#define FTP_TIME_OUT  5      // Disconnect client after 5 minutes of inactivity
-#define FTP_CMD_SIZE 255 + 8 // max size of a command
-#define FTP_CWD_SIZE 255 + 8 // max size of a directory name
-#define FTP_FIL_SIZE 255     // max size of a file name//
-#define FTP_BUF_SIZE 1024 //512   // size of file buffer for read/write
-#define FTP_BUF_SIZE 2*1460
+//#define FTP_TIME_OUT  5      // Disconnect client after 5 minutes of inactivity
+//#define FTP_CMD_SIZE 255 + 8 // max size of a command
+//#define FTP_CWD_SIZE 255 + 8 // max size of a directory name
+//#define FTP_FIL_SIZE 255     // max size of a file name//
+//#define FTP_BUF_SIZE 1024 //512   // size of file buffer for read/write
+//#define FTP_BUF_SIZE 2*1460
 
 #define PIN_BTN 34
 //#define PIN_SEND 35
-#define PIN_LED_MODE1 35
-#define PIN_LED_MODE2 32
+// to turn on : LOW // to turn off : HIGH
+#define PIN_LED_MODEB 33 //B
+#define PIN_LED_MODEG 32 //G
 
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void LED_WIFImode(String md){
   if(md=="STA"){
-    digitalWrite(PIN_LED_MODE1, HIGH);
-    digitalWrite(PIN_LED_MODE2, LOW);
+    digitalWrite(PIN_LED_MODEB, HIGH);
+    digitalWrite(PIN_LED_MODEG, LOW);
   }
   else if(md=="AP"){
-    digitalWrite(PIN_LED_MODE1, LOW);
-    digitalWrite(PIN_LED_MODE2, HIGH);
+    digitalWrite(PIN_LED_MODEB, LOW);
+    digitalWrite(PIN_LED_MODEG, HIGH);
   }
 }
 void LED_init(){
-    digitalWrite(PIN_LED_MODE1, LOW);
-    digitalWrite(PIN_LED_MODE2, LOW);
+    digitalWrite(PIN_LED_MODEB, HIGH);
+    digitalWrite(PIN_LED_MODEG, HIGH);
 }
 
 void setup(void) {
+  delay(2000);
   pinMode(PIN_BTN, INPUT);
 //  pinMode(PIN_SEND, INPUT);
-  pinMode(PIN_LED_MODE1, OUTPUT);
-  pinMode(PIN_LED_MODE2, OUTPUT);
+  pinMode(PIN_LED_MODEB, OUTPUT);
+  pinMode(PIN_LED_MODEG, OUTPUT);
   LED_init();
   Serial.begin(500000);
-  Serial.println("start!!!");
-  delay(2000);
+  Serial.println("\nServer rebooting... initializing");
 
 #ifdef ESP32
   // Note: SD_Card readers on the ESP32 will NOT work unless there is a pull-up on MISO, either do this or wire one on (1K to 4K7)
-  Serial.println(MISO);
   pinMode(19, INPUT_PULLUP);
 #endif
   Serial.print(F("Initializing SD card..."));
@@ -84,7 +84,6 @@ void setup(void) {
   File modefile = SD.open("/mode.txt");
   String md = "";
   while(modefile.available()) md += (char)modefile.read();
-  Serial.println(md);
   if(md.length()>1)WIFI_MODE=md;
   Serial.print("configuring WIFI mode to : "); Serial.println(WIFI_MODE);
 
@@ -93,8 +92,25 @@ void setup(void) {
     if (!WiFi.config(local_IP, gateway, subnet, dns)) { //WiFi.config(ip, gateway, subnet, dns1, dns2);
       Serial.println("WiFi STATION Failed to configure Correctly");
     }
-    wifiMulti.addAP(ssid_1, password_1);  // add Wi-Fi networks you want to connect to, it connects strongest to weakest
-    wifiMulti.addAP(ssid_2, password_2);  // Adjust the values in the Network tab
+    String ssid     = "";
+    String password = "";
+    md ="";
+    File sta_info = SD.open("/STA_INFO.txt");
+    while(sta_info.available()) md += (char)sta_info.read();
+    if(md.length()>1){
+      int index = md.indexOf(',');
+      int len = md.length();
+      ssid=md.substring(0, index);
+      password=md.substring(index+1, len);
+      Serial.println("configure WIFI from file");
+    }
+    else{
+      ssid=ssid_1;
+      password=password_1;
+    }
+    wifiMulti.addAP(ssid.c_str(), password.c_str());
+//    wifiMulti.addAP(ssid_1, password_1);  // add Wi-Fi networks you want to connect to, it connects strongest to weakest
+//    wifiMulti.addAP(ssid_2, password_2);  // Adjust the values in the Network tab
     Serial.println("Connecting ...");
     // Wait for the Wi-Fi to connect: scan for Wi-Fi networks, and connect to the strongest of the networks above
     while (wifiMulti.run() != WL_CONNECTED) {
@@ -102,7 +118,7 @@ void setup(void) {
       Serial.print('.');
     }
 
-    Serial.println("\nConnected to " + WiFi.SSID() + " Use IP address: " + WiFi.localIP().toString()); // Report which SSID and IP is in use
+    Serial.println("Connected to " + WiFi.SSID() + " Use IP address: " + WiFi.localIP().toString()); // Report which SSID and IP is in use
     // The logical name http://fileserver.local will also access the device if you have 'Bonjour' running or your system supports multicast dns
     if (!MDNS.begin(servername)) {          // Set your preferred server name, if you use "myserver" the address would be http://myserver.local/
       Serial.println(F("Error setting up MDNS responder!"));
@@ -143,7 +159,7 @@ void setup(void) {
   ///////////////////////////// End of Request commands
   server.begin();
   LED_WIFImode(WIFI_MODE);
-  LED_init();
+//  LED_init();
   Serial.println("HTTP server started");
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -155,7 +171,6 @@ void loop(void) {
   if (digitalRead(PIN_BTN)==HIGH) {
     File modefile = SD.open("/mode.txt");
     if (modefile) {
-      Serial.println(modefile.name());
       String mod = "";
       while (modefile.available())mod += (char)modefile.read();
       Serial.print("current mode is : "); Serial.println(mod);
@@ -214,27 +229,6 @@ void File_Download() { // This gets called twice, the first pass selects the inp
   }
   else SelectInput("Enter filename to download", "download", "download");
 }
-//void File_Download_Folder() {
-//  // if (server.args() > 0) {
-//  // if (server.hasArg("downloadf")) {
-//  SendHTML_Header();
-//  webpage += F("<h3>"); webpage += "downloading</h3>";
-//  // webpage += F("<FORM action='/"); webpage +="' method='get'>";
-//  webpage += F("<input type='text' name='"); webpage += "downloadf"; webpage += F("' value=''><br>");
-//  File tmp = SD.open("/download.htm");
-//  if (tmp) {
-//    while (tmp.available()) webpage += char(tmp.read());
-//    tmp.close();
-//  }
-//  webpage += F("<button onclick='do_dl();'>downloading 3 files</button>");
-//  webpage += F("<a href='/'>[Back]</a>");
-//  append_page_footer();
-//  SendHTML_Content();
-//  SendHTML_Stop();
-//  // }
-//  // }
-//  // else SelectInput("Enter file directory to download", "downloadf", "downloadf");
-//}
 
 void File_Download_test() { // This gets called twice, the first pass selects the input, the second pass then processes the command line arguments
 

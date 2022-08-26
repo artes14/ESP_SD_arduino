@@ -1,5 +1,3 @@
-
-
 String WIFI_MODE = "STA";
 #define   servername "fileserver"  // Set your server's logical name here e.g. if 'myserver' then address is http://myserver.local/
 
